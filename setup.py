@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='ssht',
-    version='0.8-dev',
+    version='0.8-dev1',
     description='SSH client wrapper for easily connecting to hosts',
     long_description='',
     classifiers=[
