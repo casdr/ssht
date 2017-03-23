@@ -35,12 +35,12 @@ Configure sources in ~/.ssht:
     	  {
     		"port": "2222",
     		"hostname": "host01.example.com",
-    		"ipv4": "192.168.0.2",
+    		"ipv4": "192.168.0.1",
     		"user": "root"
     	  },
     	  {
     		"port": "2222",
-    		"hostname": "host01.example.com",
+    		"hostname": "host02.example.org",
     		"ipv4": "192.168.0.2",
     	  }
     	]
@@ -70,12 +70,23 @@ Configure sources in ~/.ssht:
       -4          connect using ipv4 (skip dns if ipv4 address is defined)
       -6          connect using ipv6 (skip dns of ipv6 address is defined)
 
-Example of a connection
+## Examples
+
+### Find host based on a part of the hostname or IP
 
     $ ssht host01
-    1) root@host01.exmaple.com
-    2) host01.exmaple.com
-    Connect to: 1
-    Connecting to "host01.example.com"
-    root@host01:~$
+    Connecting to "host01.example.com" (192.168.0.1)
+
+### Select a host when multiple results have been found
+
+    $ ssht 192.168
+    1) host01.example.com
+	2) host02.example.org
+	Connect to: 2
+    Connecting to "host02.example.org" (192.168.0.2)
+
+### Use Linux style filename matching
+
+    $ ssht host*.example.org
+    Connecting to "host02.example.org"
 
