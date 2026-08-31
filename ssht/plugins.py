@@ -6,6 +6,8 @@ import os
 import mysql.connector
 import requests
 
+logger = logging.getLogger(__name__)
+
 
 class Host(object):
     def __init__(self, hostname, port=None, ipv4=None, ipv6=None, user=None):
@@ -21,16 +23,16 @@ class Host(object):
             return Host(*host)
         if isinstance(host, dict):
             return Host(**host)
-        raise ValueError('Invalid type passed: {0}'.format(type(host)))
+        raise ValueError("Invalid type passed: {0}".format(type(host)))
 
     @property
     def display(self):
         if self.user:
-            return '{0}@{1}'.format(self.user, self.hostname)
+            return "{0}@{1}".format(self.user, self.hostname)
         return self.hostname
 
     def match(self, needle):
-        for search_field in ['hostname', 'ipv4', 'ipv6']:
+        for search_field in ["hostname", "ipv4", "ipv6"]:
             value = getattr(self, search_field, None)
             if value is not None and (
                 fnmatch.fnmatch(value, needle) or needle in value
@@ -40,26 +42,26 @@ class Host(object):
 
     def __repr__(self):
         if self.ipv4 is not None:
-            return '<Host: hostname={0}, ipv4={1}>'.format(self.hostname, self.ipv4)
-        return '<Host: hostname={0}>'.format(self.hostname)
+            return "<Host: hostname={0}, ipv4={1}>".format(self.hostname, self.ipv4)
+        return "<Host: hostname={0}>".format(self.hostname)
 
 
 class Parser(object):
     def __init__(self, path):
-        '''
+        """
 
         :param path:
-        '''
+        """
         self._path = path
         self._hosts = []
 
-    def get_files(self, ext='.json'):
+    def get_files(self, ext=".json"):
         return [x for x in os.listdir(self._path) if x.endswith(ext)]
 
     def search(self, needle):
-        '''
+        """
         Return Host objects which have properties matching the needle
-        '''
+        """
         results = []
         for host in self._hosts:
             if host.match(needle):
@@ -67,8 +69,8 @@ class Parser(object):
         return results
 
     def _get_file_content(self, path):  # pragma: nocover
-        content = ''
-        with open(path, 'r') as fh:
+        content = ""
+        with open(path, "r") as fh:
             content = fh.read()
         return content
 
@@ -76,47 +78,47 @@ class Parser(object):
 class JsonParser(Parser):
     def __init__(self, *args, **kwargs):
         super(JsonParser, self).__init__(*args, **kwargs)
-        self._files = self.get_files(ext='.json')
+        self._files = self.get_files(ext=".json")
         self._load_data()
 
     def _load_data(self):
-        '''
+        """
         Load parser specific data files
-        '''
+        """
         for file_ in self._files:
             path = os.path.join(self._path, file_)
-            logging.debug('Parsing "{0}"'.format(path))
+            logger.debug('Parsing "{0}"'.format(path))
 
             try:
                 d = json.loads(self._get_file_content(path))
-                logging.debug('Got: {0}'.format(d))
-                if not 'hosts' in d:
+                logger.debug("Got: {0}".format(d))
+                if "hosts" not in d:
                     return
-                for host in d['hosts']:
+                for host in d["hosts"]:
                     self._hosts.append(Host.factory(host))
-            except ValueError as ex:  # pragma: nocover
-                logging.info(f'Config file {path} contains invalid JSON')
+            except ValueError:  # pragma: nocover
+                logger.info(f"Config file {path} contains invalid JSON")
 
 
 class MySQLParser(Parser):  # pragma: nocover
     def __init__(self, *args, **kwargs):
         super(MySQLParser, self).__init__(*args, **kwargs)
-        self._files = self.get_files(ext='.mysql')
+        self._files = self.get_files(ext=".mysql")
         self._load_data()
 
     def _load_data(self):
-        '''
+        """
         Load parser specific data files
-        '''
+        """
         for file_ in self._files:
             path = os.path.join(self._path, file_)
-            logging.debug('Parsing "{0}"'.format(path))
-            with open(path, 'r') as fh:
+            logger.debug('Parsing "{0}"'.format(path))
+            with open(path, "r") as fh:
                 d = json.loads(fh.read())
-                logging.debug('Got: {0}'.format(d))
-                conn = mysql.connector.connect(**d['config'])
+                logger.debug("Got: {0}".format(d))
+                conn = mysql.connector.connect(**d["config"])
                 c = conn.cursor()
-                c.execute(d['query'])
+                c.execute(d["query"])
 
                 for row in c:
                     self._hosts.append(Host.factory(row))
@@ -125,29 +127,27 @@ class MySQLParser(Parser):  # pragma: nocover
 class APIParser(Parser):
     def __init__(self, *args, **kwargs):
         super(APIParser, self).__init__(*args, **kwargs)
-        self._files = self.get_files('.api')
+        self._files = self.get_files(".api")
         self._load_data()
 
     def _load_data(self):
         for file_ in self._files:
             path = os.path.join(self._path, file_)
-            logging.debug('Parsing "{0}"'.format(path))
-            with open(path, 'r') as fh:
+            logger.debug('Parsing "{0}"'.format(path))
+            with open(path, "r") as fh:
                 try:
                     d = json.loads(fh.read())
                 except ValueError as ex:
-                    print('Invalid JSON file: {0}'.format(path))
-                    logging.error(ex)
-                if 'headers' not in d['config']:
-                    d['config']['headers'] = {}
-                req = requests.get(d['config']['url'], headers=d['config']['headers'])
+                    print("Invalid JSON file: {0}".format(path))
+                    logger.error(ex)
+                if "headers" not in d["config"]:
+                    d["config"]["headers"] = {}
+                req = requests.get(d["config"]["url"], headers=d["config"]["headers"])
                 try:
                     res = req.json()
-                except ValueError as ex:
-                    print('Invalid JSON response for: {0}'.format(path))
-                    logging.error(ex)
-                if 'hosts' not in res:
-                    print('No hosts in JSON response for: {0}'.format(path))
-                    logging.error(ex)
-                for host in res['hosts']:
+                except ValueError:
+                    logger.error("Error loading JSON response from {0}".format(path))
+                if "hosts" not in res:
+                    logger.info("No hosts found in {0}".format(path))
+                for host in res["hosts"]:
                     self._hosts.append(Host.factory(host))
